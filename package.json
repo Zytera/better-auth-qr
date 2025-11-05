@@ -69,12 +69,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/codelab-io/better-auth-qr-plugin.git"
+    "url": "https://github.com/zytera/better-auth-qr.git"
   },
   "bugs": {
-    "url": "https://github.com/codelab-io/better-auth-qr-plugin/issues"
+    "url": "https://github.com/zytera/better-auth-qr/issues"
   },
-  "homepage": "https://github.com/codelab-io/better-auth-qr-plugin#readme",
+  "homepage": "https://github.com/zytera/better-auth-qr#readme",
   "dependencies": {
     "qrcode": "^1.5.3",
     "uuid": "^10.0.0",
