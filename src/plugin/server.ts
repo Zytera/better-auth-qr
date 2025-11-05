@@ -1,6 +1,5 @@
 import type { BetterAuthPlugin } from "better-auth/plugins";
-import { createAuthEndpoint } from "better-auth/api";
-import { sessionMiddleware } from "better-auth/api";
+import { createAuthEndpoint, getSessionFromCtx } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
@@ -131,17 +130,16 @@ export const qrAuth = (config?: QRAuthConfigInput): BetterAuthPlugin => {
         parsedConfig.endpoints.verifyToken,
         {
           method: "POST",
-          use: [sessionMiddleware],
         },
         async (ctx) => {
           const { tokenId, token } = ctx.body;
-          
+
           if (!tokenId || !token) {
             return ctx.json({ error: "Token ID and token are required" }, { status: 400 });
           }
-          
-          // Get current session (mobile user)
-          const session = ctx.context.session;
+
+          // Get current session (mobile user) - supports both cookies and Bearer tokens
+          const session = await getSessionFromCtx(ctx);
           if (!session || !session.user) {
             return ctx.json({ error: "No authenticated user" }, { status: 401 });
           }
@@ -252,7 +250,7 @@ export const qrAuth = (config?: QRAuthConfigInput): BetterAuthPlugin => {
           }
           
           // If completed, return session creation token for secure claiming
-          if (qrToken.isUsed) {
+          if (qrToken.isUsed && qrToken.userId) {
             // Get user data
             const user = await ctx.context.adapter.findOne({
               model: "user",
@@ -262,8 +260,8 @@ export const qrAuth = (config?: QRAuthConfigInput): BetterAuthPlugin => {
                 operator: 'eq'
               }],
             });
-            
-            if (user && qrToken.sessionCreationToken) {
+
+            if (user && qrToken.sessionCreationToken && qrToken.sessionCreationTokenExpiresAt) {
               // Check if session creation token is not expired
               if (new Date(qrToken.sessionCreationTokenExpiresAt) > new Date()) {
                 return ctx.json({
@@ -276,13 +274,23 @@ export const qrAuth = (config?: QRAuthConfigInput): BetterAuthPlugin => {
                 });
               }
             }
+
+            // Token used but session creation token expired or not available
+            return ctx.json({
+              status: "completed",
+              userId: qrToken.userId,
+              user: user,
+              verifiedAt: qrToken.verifiedAt ? new Date(qrToken.verifiedAt).toISOString() : null,
+              expiresAt: new Date(qrToken.expiresAt).toISOString(),
+            });
           }
-          
+
+          // Token not yet used - pending status
           return ctx.json({
-            status: qrToken.isUsed ? "completed" : "pending",
-            userId: qrToken.userId,
-            user: qrToken.user,
-            verifiedAt: qrToken.verifiedAt ? new Date(qrToken.verifiedAt).toISOString() : null,
+            status: "pending",
+            userId: null,
+            user: null,
+            verifiedAt: null,
             expiresAt: new Date(qrToken.expiresAt).toISOString(),
           });
         }
