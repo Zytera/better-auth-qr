@@ -12,7 +12,7 @@ import type {
   QRCodeData, 
   QRAuthStartOptions, 
   QRClientConfig 
-} from "../types/index.js";
+} from "../types";
 
 /**
  * Better Auth QR client plugin for React Native
